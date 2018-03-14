@@ -128,7 +128,7 @@ class MainActivity : AppCompatActivity() {
             }
             return true
         }
-        val dir = File(Environment.getExternalStorageDirectory(), "IMAGE").apply { mkdirs() }
+        val dir = File(Environment.getExternalStorageDirectory(), "DCIM").apply { mkdirs() }
         var path = ""
         val outputstream = File(dir, "${System.currentTimeMillis().toString()}_${point}.jpg").apply {
             path = absolutePath
