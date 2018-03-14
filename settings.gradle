@@ -1,0 +1,4 @@
+include ':app'
+
+include ':cameralibrary'
+project(':cameralibrary').projectDir=new File("../../E7763/IDRegistration/cameralibrary")

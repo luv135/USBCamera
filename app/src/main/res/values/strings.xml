@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">USBCamera</string>
+    <string name="tack_picture">Picture</string>
+    <string name="switchbutton">Switch</string>
+    <string name="resolution_ratio">Resolution</string>
+    <string name="start_tack_picture">Start tack picture</string>
+    <string name="tack_picture_done">Tack picture done</string>
+</resources>

@@ -1,0 +1,65 @@
+apply plugin: 'com.android.application'
+
+apply plugin: 'kotlin-android'
+
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    compileSdkVersion 26
+    defaultConfig {
+        applicationId "com.unistrong.usbcamera.luowei.usbcamera"
+        minSdkVersion 21
+        targetSdkVersion 26
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    signingConfigs {
+        key2 {
+            storeFile file("../e7764key.jks")
+            storePassword '123456'
+            keyAlias '1'
+            keyPassword '123456'
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.key2
+        }
+        debug {
+            signingConfig signingConfigs.key2
+        }
+    }
+}
+kotlin {
+    experimental {
+        coroutines "enable"
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation"org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
+    implementation 'com.android.support:appcompat-v7:26.1.0'
+    implementation 'com.android.support.constraint:constraint-layout:1.0.2'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.1'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
+    implementation project(':cameralibrary')
+    compile 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.21'
+
+}
+
+task release(dependsOn: 'assembleRelease') << {
+    def today = new Date().format('yyyyMMdd')
+    def id = android.defaultConfig.applicationId
+    def prex = id.substring(id.lastIndexOf(".") + 1)
+    copy {
+        from('build/outputs/apk/release/')
+        into('../release/')
+        include('*release.apk')
+        rename('app-', "$prex" + "-" + android.defaultConfig.versionName + "-" + today + "-")
+    }
+}
