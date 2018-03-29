@@ -1,56 +1,88 @@
-package com.unistrong.usbcamera.luowei.usbcamera
+package com.unistrong.luowei.usbcamera
 
-import android.app.AlertDialog
-import android.hardware.usb.UsbDevice
-import android.support.v7.app.AppCompatActivity
-import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
-import android.view.View
-import android.widget.Toast
-import com.unistrong.luowei.cameralib.impl.uvc.CameraHelper
-import com.unistrong.luowei.cameralib.impl.uvc.USBCamera
-import com.unistrong.luowei.cameralib.impl.uvc.UVCDevice
-import com.unistrong.luowei.cameralib.impl.uvc.UVCPreviewView
-import com.unistrong.luowei.kotlin.toByteArray
-import java.io.File
-import java.io.FileOutputStream
 import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.Activity
-import android.app.ProgressDialog
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.*
+import android.hardware.usb.UsbDevice
 import android.media.MediaScannerConnection
 import android.net.Uri
+import android.os.Bundle
+import android.os.Environment
+import android.provider.MediaStore
 import android.support.v4.app.ActivityCompat
 import android.support.v4.content.ContextCompat
+import android.support.v7.app.AppCompatActivity
+import android.view.View
+import android.widget.Toast
 import com.unistrong.luowei.cameralib.base.ICamera
 import com.unistrong.luowei.cameralib.base.IPreviewCallback
+import com.unistrong.luowei.cameralib.impl.uvc.CameraHelper
+import com.unistrong.luowei.cameralib.impl.uvc.USBCamera
+import com.unistrong.luowei.cameralib.impl.uvc.UVCDevice
 import com.unistrong.luowei.commlib.Log
 import com.unistrong.luowei.kotlin.hide
 import com.unistrong.luowei.kotlin.show
+import com.unistrong.luowei.qrcodelib.impl.AsyncQRCoder
 import kotlinx.android.synthetic.main.activity_main.*
-import java.io.ByteArrayOutputStream
+import java.io.File
 
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var preview: UVCPreviewView
     var camera: USBCamera? = null
     private var point: Point? = Point(2592, 1944)
+    private var qrCoder = AsyncQRCoder()
+    private var lastQrText: String? = null
+
+    private val qrCallback: (text: String?, bitmap: Bitmap?) -> Unit = { text, bitmap ->
+        text?.takeIf { it != lastQrText }
+                ?.let {
+                    lastQrText = it
+                    runOnUiThread {
+                        Log.d("text = $it")
+                        qrTextView.text = it
+//                        com.unistrong.luowei.commlib.Toast.shortToast(it)
+                    }
+                }
+    }
+    private val deviceCallback: (device: UsbDevice) -> Unit = {
+        if (CameraHelper.isHDCamera(it) || CameraHelper.isPCCamera(it)) {
+            tryOpenCamera()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        preview = findViewById<UVCPreviewView>(R.id.preview)
         //        preview.setAspectRatio(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT)
-
+        sendBroadcast(Intent("com.unistrong.luowei.LED_OCR_ON"))
         setupTackPicture()
         setupUI()
+        com.unistrong.luowei.commlib.Toast.initToast(this)
         checkPermission()
     }
+
+    override fun onResume() {
+        super.onResume()
+//        LightControl.ledCameraOn(activity)
+        tryOpenCamera()
+        CameraHelper.registerDevice(this.application, deviceCallback)
+        startQrWork()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        CameraHelper.unregisterDevice(this.application, deviceCallback)
+        stopQrWork()
+        camera?.close()
+        camera = null
+    }
+
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -194,12 +226,13 @@ class MainActivity : AppCompatActivity() {
 
     private val callback: IPreviewCallback = object : IPreviewCallback {
         override fun onPreviewFrame(byteArray: ByteArray, camera: ICamera) {
+            qrCoder.onPreviewFrame(byteArray, camera)
             if (takePiture) {
                 takePiture = false
                 val config = camera.getConfig()
                 val width = config.currentResolution.x
                 val height = config.currentResolution.y
-                val out = ByteArrayOutputStream()
+//                val out = ByteArrayOutputStream()
                 val yuvImage = YuvImage(byteArray, ImageFormat.NV21, width,
                         height, null)
 //                yuvImage.compressToJpeg(Rect(0, 0, width, height), 100, out)
@@ -229,21 +262,11 @@ class MainActivity : AppCompatActivity() {
         camerahardware = "(当前$index,检测到${cameras.size}个摄像头)\ncamera Info:\n productName=${(iDevice as UVCDevice).device.productName},\n vendorId${iDevice.device.vendorId},productId=${iDevice.device.productId}"
 //        uvc_camera_log_text_view.text = "$camerahardware \n Resolution:${camera!!.getConfig().currentResolution}"
         camera!!.open(iDevice, preview)
+//        camera!!.open(iDevice, preview.uvcPreviewView)
         camera!!.setPreviewCallback(callback)
+//        qrCoder.scanArea = WeakReference(preview)
     }
 
-    private val deviceCallback: (device: UsbDevice) -> Unit = {
-        if (CameraHelper.isHDCamera(it) || CameraHelper.isPCCamera(it)) {
-            tryOpenCamera()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-//        LightControl.ledCameraOn(activity)
-        tryOpenCamera()
-        CameraHelper.registerDevice(this.application, deviceCallback)
-    }
 
     private fun tryOpenCamera() {
         val cameras = CameraHelper.getCameras(this)
@@ -252,9 +275,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onPause() {
-        super.onPause()
-        camera?.close()
-        CameraHelper.unregisterDevice(this.application, deviceCallback)
+    private fun startQrWork() {
+        qrCoder.setResultCallback(qrCallback)
+        qrCoder.start()
+    }
+
+    fun stopQrWork() {
+        qrCoder.setResultCallback(null)
+        qrCoder.stop()
     }
 }

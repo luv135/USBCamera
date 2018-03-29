@@ -10,8 +10,9 @@ android {
         applicationId "com.unistrong.luowei.usbcamera"
         minSdkVersion 21
         targetSdkVersion 26
-        versionCode 2
-        versionName "1.1"
+        versionCode 4
+        //大版本.新功能.bug.修改次数
+        versionName "1.3.0.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -48,10 +49,16 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
     implementation project(':cameralibrary')
+    implementation project(':certificatelibrary')
     compile 'org.jetbrains.kotlinx:kotlinx-coroutines-android:0.21'
-
 }
 
+repositories {
+    flatDir {
+        dirs '../IDRegistration/libs'
+    }
+
+}
 task release(dependsOn: 'assembleRelease') << {
     def today = new Date().format('yyyyMMdd')
     def id = android.defaultConfig.applicationId

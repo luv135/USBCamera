@@ -1,4 +1,8 @@
 include ':app'
 
 include ':cameralibrary'
-project(':cameralibrary').projectDir=new File("../../E7763/IDRegistration/cameralibrary")
+project(':cameralibrary').projectDir=new File("IDRegistration/cameralibrary")
+
+include ':certificatelibrary'
+project(':certificatelibrary').projectDir=new File("IDRegistration/certificatelibrary")
+

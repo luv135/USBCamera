@@ -21,6 +21,9 @@ allprojects {
         jcenter()
         maven { url 'http://raw.github.com/saki4510t/libcommon/master/repository/' }
         maven { url 'https://jitpack.io' }
+        flatDir {
+            dirs 'IDRegistration/libs'
+        }
     }
 }
 
