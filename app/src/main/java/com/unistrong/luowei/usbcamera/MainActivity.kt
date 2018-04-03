@@ -4,6 +4,7 @@ import android.Manifest.permission.READ_EXTERNAL_STORAGE
 import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.*
@@ -18,6 +19,9 @@ import android.support.v4.content.ContextCompat
 import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.Toast
+import com.seu.magicfilter.MagicEngine
+import com.seu.magicfilter.filter.helper.MagicFilterType
+import com.seu.magicfilter.utils.MagicParams
 import com.unistrong.luowei.cameralib.base.ICamera
 import com.unistrong.luowei.cameralib.base.IPreviewCallback
 import com.unistrong.luowei.cameralib.impl.uvc.CameraHelper
@@ -55,16 +59,42 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var magicEngine: MagicEngine? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        val builder = MagicEngine.Builder()
+        magicEngine = builder.build(preview)
         //        preview.setAspectRatio(UVCCamera.DEFAULT_PREVIEW_WIDTH, UVCCamera.DEFAULT_PREVIEW_HEIGHT)
         sendBroadcast(Intent("com.unistrong.luowei.LED_OCR_ON"))
         setupTackPicture()
         setupUI()
         com.unistrong.luowei.commlib.Toast.initToast(this)
         checkPermission()
+        setMagicButton()
+    }
+
+    private fun setMagicButton() {
+        magicButton.setOnClickListener {
+                        AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.resolution_ratio))
+                    .setSingleChoiceItems(
+                            MagicFilterType.values().map { it.name }.toTypedArray(),
+                            -1) { dialog, which ->
+                        magicEngine!!.setFilter(MagicFilterType.values()[which])
+                        dialog.dismiss()
+                    }
+                    .show()
+//            AlertDialog.Builder(this)
+//                    .setSingleChoiceItems(arrayOf("关闭", "1", "2", "3", "4", "5"), MagicParams.beautyLevel
+//                    ) { dialog, which ->
+//                        magicEngine!!.setBeautyLevel(which)
+//                        dialog.dismiss()
+//                    }
+//                    .setNegativeButton("取消", null)
+//                    .show()
+        }
     }
 
     override fun onResume() {
